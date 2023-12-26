@@ -1,0 +1,452 @@
+#!/usr/bin/env bash
+# dbus-send instead of qdbus
+# You can replace qdbus bundled with Qt with more common dbus-send. For
+#example, to show/hide Yakuake:
+# dbus-send --type=method_call --dest=org.kde.yakuake /yakuake/window org.kde.yakuake.toggleWindowState
+
+# YAKUAKEDBUS=qdbus
+YAKUAKEDBUS=dbus-send
+function log() {
+  #  usage:
+  # log "INFO some info message"
+  # log "DEBUG some debug message"
+  # log "WARN some warning message"
+  # log "ERROR some really ERROR message"
+  # log "FATAL some really fatal message"
+  # shellcheck disable=SC2155
+  local type_of_msg=$(echo "${@}" | cut -d" " -f1)
+  # shellcheck disable=SC2155
+  local msg=$(echo "${@}" | cut -d" " -f2-)
+  local _datum=$(date "+%Y.%m.%d-%H:%M:%S %Z")
+  case "${type_of_msg}" in
+    INFO*)  echo -en " ${PURPLE_BLUE-}[${GRAY241-}" ;;
+    ERROR*) echo -en " ${PURPLE-}[${RED-}" ;;
+    *)  echo -en " ${PURPLE_BLUE-}[${YELLOW226-}" ;;
+  esac
+  echo -en "${type_of_msg}"
+  case "${type_of_msg}" in
+    ERROR*) echo -e "${PURPLE-}] ${GRAY200-}${_datum}${RED89-}[${RED126-}$$${RED89-}] ${RED126-}${msg}${RESET-}" ;;
+    *)  echo -e "${PURPLE_BLUE-}] ${GRAY238-}${_datum}${RED89-}[${RED126-}$$${RED89-}] ${CYAN60-}${msg}${RESET-}" ;;
+  esac
+} # end log
+
+function load_global_colors(){
+  [[ -z "${BLACK-}" ]] && BLACK="\\033[38;5;16m"
+  [[ -z "${BRIGHT_BLUE87-}" ]] && BRIGHT_BLUE87="\\033[38;5;87m"
+  [[ -z "${CYAN-}" ]] && CYAN="\\033[38;5;123m"
+  [[ -z "${CYAN60-}" ]] && CYAN60="\\033[38;5;60m"
+  [[ -z "${GRAY241-}" ]] && GRAY241="\\033[38;5;241m"
+  [[ -z "${GRAY200-}" ]] && GRAY200="\\033[38;5;200m"
+  [[ -z "${GRAY238-}" ]] && GRAY238="\\033[38;5;238m"
+  [[ -z "${GREEN-}" ]] && GREEN="\\033[38;5;22m"
+  [[ -z "${PURPLE_BLUE-}" ]] && PURPLE_BLUE="\\033[38;5;93m"
+  [[ -z "${PURPLE-}" ]] && PURPLE="\\033[01;35m"
+  [[ -z "${RED-}" ]] && RED="\\033[38;5;1m"
+  [[ -z "${RED89-}" ]] && RED89="\\033[38;5;89m"
+  [[ -z "${RED126-}" ]] && RED126="\\033[38;5;126m"
+  [[ -z "${RESET_PROMPT-}" ]] && RESET_PROMPT="[0m"
+  [[ -z "${RESET-}" ]] && RESET="\\033[0m"
+  [[ -z "${YELLOW220-}" ]] && YELLOW220="\\033[38;5;220m"
+  [[ -z "${YELLOW226-}" ]] && YELLOW226="\\033[38;5;226m"
+  [[ -z "${YELLOW-}" ]] && YELLOW="\\033[01;33m"
+  [[ -z "${FROM_MAGENTA_NOT_VISIBLE-}" ]] && FROM_MAGENTA_NOT_VISIBLE="\\033[39m\\033[38;5;124m"
+} # end load_global_colors
+load_global_colors
+
+function qdbus() {
+  local -i _err=0
+  >&2 log INFO qdbus "${*}"
+  (
+    eval """$(which qdbus) ${*:-}"""
+  )
+  _err=$?
+  [ ${_err} -gt 0 ] && >&2 log ERROR qdbus "${*}"
+} # end qdbus
+
+function pront() {
+  >&2 log INFO echo "${*}"
+  (
+    echo  """${*:-}"""
+  )
+} # end pront
+
+# REF: https://wiki.archlinux.org/title/Yakuake
+function load_tabs() {
+  local -i TERMINAL_ID_=0
+  local -i SESSION_ID_=0
+  local TERMINALS_=""
+  local -i DEBUG
+  DEBUG=0
+  local -i LIMIT_COUNTER
+  LIMIT_COUNTER=0
+  if [[ "${1}" == '--debug' ]] ; then
+  {
+    clear
+    DEBUG=1
+    set -xu
+    if [ -n ${2-} ] && [ ${2-} -gt 0 ] ; then
+    {
+      LIMIT_COUNTER=${2}
+    }
+    fi
+  }
+  else
+  {
+    DEBUG=0
+    # set +xu
+  }
+  fi
+  local _sessions=""
+  if [[ -f "${1}" ]] ; then
+  {
+    _sessions="$(grep -vE '^\s+#|^#'<"${1}")"
+  }
+  else
+  {
+    >&2 log ERROR filename "Was not found. Expected $0 --debug 3 or $0 filename_list"
+    >&2 log INFO sample "#This is sample filename_list contents:
+    #	_sessions=\"
+    simple|backend|/home/work/username/projects/api|bundle exec rails s|split|/home/work/username/projects/back|git pull|
+    flat|frontend|/home/work/username/projects/front|npm run dev|split|/home/work/username/projects/front|npm run doc-center|
+    vertical|sidekiq|/home/work/username/projects/sidekiqx
+    simple|db|/home/work/username/projects/data|ls|split|/home/work/username/projects/db|ls|
+    quad|tests|/home/work/username/projects/test
+    simple|push|/home/work/username/projects/project|git status|split|/home/work/username/projects/project|git pull|
+    horizontal|project|/home/work/username/projects/project|
+    simple|home|/home/work/username|ls|split|/home/work/username/files|ls|
+    vertical|prestalgo|/home/work/username/projects/project|cmatrix -n 9|
+    # use hashtags to ignore lines
+    #\"
+    "
+    exit 1
+  }
+  fi
+  local -i _counter
+  _counter=0
+  local -i _alt_counter
+  _alt_counter=1
+  # local _current_sessions="$(qdbus org.kde.yakuake /yakuake/sessions org.kde.yakuake.terminalIdList | sed 's/,/\n/g' | sort -n)"
+  local _current_sessions="$(qdbus org.kde.yakuake /yakuake/sessions org.kde.yakuake.sessionIdList | sed 's/,/\n/g' | sort -n)"
+  local -i _num=0
+  while read -r _num ; do
+  {
+    [[ -z "${_num}" ]] && continue
+    (( _counter++ ))
+    (( _alt_counter++ ))
+  }
+  done <<< "${_current_sessions}"
+  local _session_start_type _one _title _path _path2 _run _run2 _split SESSION_ID_ TERMINAL_ID_
+  local _yakuake_path_and_run _yakuake_set_title
+  function _yakuake_split() {
+    if [[ -n "${_split-}" ]] ; then
+    {
+      echo "split:${_split} Get a new TERMINAL_ID from the SPLIT of targeting TERMINAL_ID:$TERMINAL_ID_"
+      if [[ "${_split}" == *"split"* ]] || [[ ${_split}==*"left"* ]] ; then
+      {
+        (( DEBUG )) && pront " +-- Change split Terminal:${_counter} Splt?:${_split}"
+        {
+          (( DEBUG )) || TERMINAL_ID_=$(qdbus org.kde.yakuake /yakuake/sessions org.kde.yakuake.splitTerminalLeftRight "$TERMINAL_ID_")
+          wait
+        }
+        wait
+      }
+      fi
+      if [[ "${_split}" == *"right"* ]] ; then
+      {
+        (( DEBUG )) && pront " +-- Change split Terminal:${_counter} Splt?:${_split}"
+        {
+          (( DEBUG )) || TERMINAL_ID_=$(qdbus org.kde.yakuake /yakuake/sessions org.kde.yakuake.splitTerminalLeftRight "$TERMINAL_ID_")
+          wait
+        }
+        wait
+      }
+      fi
+      if [[ "${_split}" == *"bottom"* ]] ; then
+      {
+        (( DEBUG )) && pront " +-- Change split Terminal:${_counter} Splt?:${_split}"
+	{
+          (( DEBUG )) || TERMINAL_ID_=$(qdbus org.kde.yakuake /yakuake/sessions org.kde.yakuake.splitTerminalTopBottom "$TERMINAL_ID_")
+         wait
+	}
+	wait
+      }
+      fi
+      if [[ "${_split}" == *"top"* ]] ; then
+      {
+        (( DEBUG )) && pront " +-- Change split Terminal:${_counter} Splt?:${_split}"
+        {
+          (( DEBUG )) || TERMINAL_ID_=$(qdbus org.kde.yakuake /yakuake/sessions org.kde.yakuake.splitTerminalTopBottom "$TERMINAL_ID_")
+          wait
+        }
+        wait
+      }
+      fi
+      #{
+      #  (( DEBUG )) || TERMINAL_ID_=$(qdbus org.kde.yakuake /yakuake/sessions org.kde.yakuake.terminalIdsForSessionId "$SESSION_ID_")
+      #  wait
+      #}
+      #wait
+      # qdbus org.kde.yakuake /yakuake/sessions org.kde.yakuake.splitTerminalTopBottom "$TERMINAL_ID_1"
+      # pront "split SESSION_ID_=$SESSION_ID_ , TERMINAL_ID_=$TERMINAL_ID_ , path:$_path , path2:$_path2 , run:$_run , run2:$_run2,one:$_one"
+      _path2="$(cut -d'|' -f6 <<< ${_one})"
+      [ -z ${_path2} ] && _path2="${_path}"
+      _path="${_path2}"
+      _run="${_run2}"
+      pront "split SESSION_ID_=$SESSION_ID_ , TERMINAL_ID_=$TERMINAL_ID_ , path:$_path , path2:$_path2 , run:$_run , run2:$_run2,one:$_one"
+      _yakuake_path_and_run
+    }
+    fi
+  } # end _yakuake_split
+  function _yakuake_set_title() {
+    if [[ -n "${_title}" ]] ; then
+    {
+      (( DEBUG )) && pront " +-- Change title Terminal:${_counter} Title:${_alt_counter}.${_title}"
+      (( DEBUG )) || qdbus org.kde.yakuake /yakuake/tabs setTabTitle ${SESSION_ID_} "${_alt_counter}.${_title}"
+    }
+    fi
+  } # end _yakuake_set_title
+  function _yakuake_path_and_run() {
+    (( DEBUG )) &&	pront " +-- Testing  counter:${_counter} -n _path:${_path} and -n _run:${_run} "
+    if [[ -n "${_path:-}" ]] && \
+       [[ -n "${_run}" ]]  ; then
+    {
+        (( DEBUG )) && pront " +-- Change _path Terminal:${_counter} Path:${_path} and run Run:${_run} "
+        pront "path&run SESSION_ID_=$SESSION_ID_ , TERMINAL_ID_=$TERMINAL_ID_ , path:$_path , path2:$_path2 , run:$_run , run2:$_run2,one:$_one"
+        (( DEBUG )) || qdbus org.kde.yakuake /yakuake/sessions runCommandInTerminal ${TERMINAL_ID_} "\"cd '${_path}' && ${_run}\""
+    }
+    else
+    {
+      if [[ -n "${_path}" ]] ; then
+      {
+        (( DEBUG )) && pront " +-- Change _path Terminal:${_counter} Path:${_path}"
+        pront "path only SESSION_ID_=$SESSION_ID_ , TERMINAL_ID_=$TERMINAL_ID_ , path:$_path , path2:$_path2 , run:$_run , run2:$_run2,one:$_one"
+        (( DEBUG )) || qdbus org.kde.yakuake /yakuake/sessions runCommandInTerminal ${TERMINAL_ID_} "\"cd '${_path}'\"" 
+      }
+      elif [[ -n "${_run}" ]] ; then
+      {
+        (( DEBUG )) && pront " +-- Change execute Terminal:${_counter} Run:${_run}"
+        pront "run only SESSION_ID_=$SESSION_ID_ , TERMINAL_ID_=$TERMINAL_ID_ , path:$_path , path2:$_path2 , run:$_run , run2:$_run2,one:$_one"
+        (( DEBUG )) || qdbus org.kde.yakuake /yakuake/sessions runCommandInTerminal ${TERMINAL_ID_} "\"${_run}\""
+      }
+      fi
+    }
+    fi
+  } # end local _yakuake_path_and_run
+  function _yakuake_add_tab() {
+    pront "${0} ${LINENO} ${FUNCNAME[0]}"
+    {
+      (( DEBUG )) || SESSION_ID_=$(qdbus org.kde.yakuake /yakuake/sessions org.kde.yakuake.addSession)
+      wait
+    }
+    wait
+    {
+      (( DEBUG )) || TERMINAL_ID_=$(qdbus org.kde.yakuake /yakuake/sessions org.kde.yakuake.terminalIdsForSessionId "$SESSION_ID_")
+      wait
+    }
+    wait
+  } # end _yakuake_add_tab
+  function _yakuake_add_tab_quad() {
+    pront "${0} ${LINENO} ${FUNCNAME[0]}"
+    {
+      (( DEBUG )) || SESSION_ID_=$(qdbus org.kde.yakuake /yakuake/sessions org.kde.yakuake.addSessionQuad)
+      wait
+    }
+    wait
+    {
+      (( DEBUG )) || TERMINALS_=$(qdbus org.kde.yakuake /yakuake/sessions org.kde.yakuake.terminalIdsForSessionId "$SESSION_ID_")
+      (( DEBUG )) || TERMINAL_ID_=-1
+      wait
+    }
+    wait
+  } # end _yakuake_add_tab_quad
+  function _yakuake_add_tab_two_horizontal() {
+    pront "${0} ${LINENO} ${FUNCNAME[0]}"
+    {
+      (( DEBUG )) || SESSION_ID_=$(qdbus org.kde.yakuake /yakuake/sessions org.kde.yakuake.addSessionTwoHorizontal)
+      wait
+    }
+    wait
+    {
+      (( DEBUG )) || TERMINALS_=$(qdbus org.kde.yakuake /yakuake/sessions org.kde.yakuake.terminalIdsForSessionId "$SESSION_ID_")
+      (( DEBUG )) || TERMINAL_ID_=-1
+      wait
+    }
+    wait
+  } # end _yakuake_add_tab_two_horizontal
+  function _yakuake_add_tab_two_vertical() {
+    pront "${0} ${LINENO} ${FUNCNAME[0]}"
+    {
+      (( DEBUG )) || SESSION_ID_=$(qdbus org.kde.yakuake /yakuake/sessions org.kde.yakuake.addSessionTwoVertical)
+      wait
+    }
+    wait
+    {
+      (( DEBUG )) || TERMINALS_=$(qdbus org.kde.yakuake /yakuake/sessions org.kde.yakuake.terminalIdsForSessionId "$SESSION_ID_")
+      (( DEBUG )) || TERMINAL_ID_=-1
+      wait
+    }
+    wait
+  } # end _yakuake_add_tab_two_vertical
+
+  while read -r _one ; do
+  {
+    SESSION_ID_=-1
+    TERMINALS_=""
+    TERMINAL_ID_=-1
+    _session_start_type=""
+    _title=""
+    _path=""
+    _run=""
+    _split=""
+    _path2=""
+    _run2=""
+    [ -z "${_one}" ] && continue
+    _session_start_type="$(cut -d'|' -f1 <<< ${_one})"
+    _title="$(cut -d'|' -f2 <<< ${_one})"
+    _path="$(cut -d'|' -f3 <<< ${_one})"
+    _run="$(cut -d'|' -f4 <<< ${_one})"
+    _split="$(cut -d'|' -f5 <<< ${_one})"
+    _path2="$(cut -d'|' -f6 <<< ${_one})"
+    _run2="$(cut -d'|' -f7 <<< ${_one})"
+    pront "Terminal ${_alt_counter} "
+    case "${_session_start_type}" in
+      simple*) _yakuake_add_tab ;;
+      flat*) _yakuake_add_tab ;;
+      quad*) _yakuake_add_tab_quad ;;
+      horizontal*) _yakuake_add_tab_two_horizontal ;;
+      vertical*) _yakuake_add_tab_two_vertical ;;
+      *) _yakuake_add_tab ;;
+    esac
+    # _yakuake_add_tab
+    # qdbus org.kde.yakuake /yakuake/sessions org.kde.yakuake.addSession
+    _yakuake_set_title
+    if [[ -n "${TERMINALS_}" ]] && [ ${TERMINAL_ID_} -eq -1 ]  ; then
+    {
+      local _terminal_list="$(sed 's/,/\n/g' <<< "${TERMINALS_}" | sort -n)"
+      (
+        while read -r TERMINAL_ID_ ; do
+	{
+          [[ ${TERMINAL_ID_} -lt 0 ]] && continue
+          _yakuake_path_and_run
+          _yakuake_split
+        }
+        done <<< "${_terminal_list}"
+      )
+    }
+    elif [[ -z "${TERMINALS_}" ]] && [ ${TERMINAL_ID_} -eq -1 ] ; then
+    {
+      >&2 log ERROR terminal "something went wrong before here, or logic is missing"
+      continue
+    }
+    else
+    {
+      _yakuake_path_and_run
+      _yakuake_split
+    }
+    fi
+    (( _counter ++ ))
+    [ ${_counter} -gt ${LIMIT_COUNTER} ] && [ ${LIMIT_COUNTER} -gt 0 ]  && break;
+    (( _alt_counter ++ ))
+  }
+  done <<< "${_sessions}"
+} # end load_tabs
+
+# Expect to produce some actions like these. Left for referemce
+
+if [ ${#} -gt 0 ] ; then
+{
+  if [[ "${1}" == '--debug' ]] ; then
+  {
+    load_tabs --debug "${2-}"
+  }
+  else
+  {
+    load_tabs "${*}"
+  }
+  fi
+}
+else
+{
+	load_tabs
+}
+fi
+
+
+INITIAL_ID=`qdbus org.kde.yakuake /yakuake/sessions org.kde.yakuake.activeSessionId`
+function addSession {
+    SESSION_ID=`qdbus org.kde.yakuake /yakuake/sessions org.kde.yakuake.addSession`
+    qdbus org.kde.yakuake /yakuake/tabs setTabTitle $SESSION_ID "$1"
+    if [ ! -z "$2" ]; then
+        # qdbus org.kde.yakuake /yakuake/sessions runCommandInTerminal $SESSION_ID "$2"
+        qdbus org.kde.yakuake /yakuake/sessions/$SESSION_ID org.kde.konsole.Session.sendText  "$2"
+    fi
+}
+# Installation system-wide (for all users) in /usr/local/bin
+# $ sudo install -Dp --mode=755 --owner=root --group=root yaknewtab /usr/local/bin/yaknewtab
+# Installation for the current user only in $HOME/bin
+# $ install -Dp --mode=755 yaknewtab $HOME/bin/yaknewtab
+
+# addSession "Nodejs server" "bash -c cd /home/user/_/clis"
+# addSession "Grunt Server" "cd /home/user/_/clis"
+# addSession "Top" "top"
+
+
+
+#!/bin/bash
+# DEPENDENCIES
+#Yakuake, cmatrix, neofetch, bpytop make sure all these work before installing this config file
+#CONCEPT
+#Have a drop down 'quake' terminal which has a standard terminal on the left and bpytop on the right
+# BPYtop appears to be overlaid on top of cmatrix giving a great visualisation whilst also providing a great
+# system monitor
+# QDBusViewer was very useful in setting up this script
+
+#This will create a split terminal as shown on diagram below.
+#+--------------------------------+--------------------------------+
+#|TerminalID=0 (runs neofetch)    |TerminalID=1 (runs cmatrix)     |
+#|                                +--------------------------------+
+#|                                |TerminalID=2 (runs bpytop)      |
+#|                                |                                |
+#|                                |                                |
+#|                                |                                |
+#|                                |                                |
+#|                                |                                |
+#|                                |                                |
+#+                                +--------------------------------+
+#|                                |TerminalID=3 (runs cmatrix)     |
+#+--------------------------------+--------------------------------+
+
+exit 0
+
+
+
+# This line is needed in case Yakuake does not accept fcitx inputs.
+#(don't know what this does - copied from example script)
+/usr/bin/yakuake --im /usr/bin/fcitx --inputstyle onthespot &
+
+# gives Yakuake a couple seconds before sending dbus commands
+sleep 2
+
+#set tab title
+qdbus org.kde.yakuake /yakuake/tabs setTabTitle 0 "user"
+
+#set-up terminal split design (see diagram above)
+#split terminal into two left/right
+qdbus org.kde.yakuake /yakuake/sessions org.kde.yakuake.splitTerminalLeftRight 0
+
+#Now split the RHS into 3 terminals
+qdbus org.kde.yakuake /yakuake/sessions org.kde.yakuake.splitTerminalTopBottom 1
+qdbus org.kde.yakuake /yakuake/sessions org.kde.yakuake.splitTerminalTopBottom 2
+
+#now resize the right hand middle terminal to take up most the space
+
+qdbus org.kde.yakuake /yakuake/sessions tryGrowTerminalTop 2 100
+qdbus org.kde.yakuake /yakuake/sessions org.kde.yakuake.tryGrowTerminalBottom 2 200
+
+#Now run applications
+qdbus org.kde.yakuake /yakuake/sessions runCommandInTerminal 0 "neofetch"
+qdbus org.kde.yakuake /yakuake/sessions runCommandInTerminal 1 "cmatrix -u 9"
+qdbus org.kde.yakuake /yakuake/sessions runCommandInTerminal 2 "bpytop"
+qdbus org.kde.yakuake /yakuake/sessions runCommandInTerminal 3 "cmatrix -u 9"
+
+
