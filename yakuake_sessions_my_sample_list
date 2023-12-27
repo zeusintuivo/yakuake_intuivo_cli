@@ -1,0 +1,11 @@
+# comments are ignored
+simple|backend|/home/work/username/projects/api|bundle exec rails s|split|/home/work/username/projects/back|git pull|
+flat|frontend|/home/work/username/projects/front|npm run dev|split|/home/work/username/projects/front|npm run doc-center|
+vertical|sidekiq|/home/work/username/projects/sidekiqx
+simple|db|/home/work/username/projects/data|ls|split|/home/work/username/projects/db|ls|
+quad|tests|/home/work/username/projects/test
+simple|push|/home/work/username/projects/project|git status|split|/home/work/username/projects/project|git pull|
+horizontal|project|/home/work/username/projects/project|
+# simple|home|/home/work/username|ls|split|/home/work/username/files|ls|
+vertical|prestalgo|/home/work/username/projects/project|cmatrix -n 9|
+
