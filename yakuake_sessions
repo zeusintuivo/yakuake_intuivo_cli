@@ -164,11 +164,11 @@ function load_tabs() {
       if [[ "${_split}" == *"bottom"* ]] ; then
       {
         (( DEBUG )) && pront " +-- Change split Terminal:${_counter} Splt?:${_split}"
-	{
+        {
           (( DEBUG )) || TERMINAL_ID_=$(qdbus org.kde.yakuake /yakuake/sessions org.kde.yakuake.splitTerminalTopBottom "$TERMINAL_ID_")
-         wait
-	}
-	wait
+          wait
+        }
+        wait
       }
       fi
       if [[ "${_split}" == *"top"* ]] ; then
@@ -325,7 +325,7 @@ function load_tabs() {
       local _terminal_list="$(sed 's/,/\n/g' <<< "${TERMINALS_}" | sort -n)"
       (
         while read -r TERMINAL_ID_ ; do
-	{
+        {
           [[ ${TERMINAL_ID_} -lt 0 ]] && continue
           _yakuake_path_and_run
           _yakuake_split
@@ -367,19 +367,19 @@ if [ ${#} -gt 0 ] ; then
 }
 else
 {
-	load_tabs
+  load_tabs
 }
 fi
 
 
 INITIAL_ID=`qdbus org.kde.yakuake /yakuake/sessions org.kde.yakuake.activeSessionId`
 function addSession {
-    SESSION_ID=`qdbus org.kde.yakuake /yakuake/sessions org.kde.yakuake.addSession`
-    qdbus org.kde.yakuake /yakuake/tabs setTabTitle $SESSION_ID "$1"
-    if [ ! -z "$2" ]; then
-        # qdbus org.kde.yakuake /yakuake/sessions runCommandInTerminal $SESSION_ID "$2"
-        qdbus org.kde.yakuake /yakuake/sessions/$SESSION_ID org.kde.konsole.Session.sendText  "$2"
-    fi
+  SESSION_ID=`qdbus org.kde.yakuake /yakuake/sessions org.kde.yakuake.addSession`
+  qdbus org.kde.yakuake /yakuake/tabs setTabTitle $SESSION_ID "$1"
+  if [ ! -z "$2" ]; then
+    # qdbus org.kde.yakuake /yakuake/sessions runCommandInTerminal $SESSION_ID "$2"
+    qdbus org.kde.yakuake /yakuake/sessions/$SESSION_ID org.kde.konsole.Session.sendText  "$2"
+  fi
 }
 # Installation system-wide (for all users) in /usr/local/bin
 # $ sudo install -Dp --mode=755 --owner=root --group=root yaknewtab /usr/local/bin/yaknewtab
@@ -439,7 +439,6 @@ qdbus org.kde.yakuake /yakuake/sessions org.kde.yakuake.splitTerminalTopBottom 1
 qdbus org.kde.yakuake /yakuake/sessions org.kde.yakuake.splitTerminalTopBottom 2
 
 #now resize the right hand middle terminal to take up most the space
-
 qdbus org.kde.yakuake /yakuake/sessions tryGrowTerminalTop 2 100
 qdbus org.kde.yakuake /yakuake/sessions org.kde.yakuake.tryGrowTerminalBottom 2 200
 
