@@ -16,7 +16,7 @@ Just create a file with a list of sessions
     vertical|sidekiq|/home/work/username/projects/sidekiqx
     simple|db|/home/work/username/projects/data|ls|split|/home/work/username/projects/db|ls|
     quad|tests|/home/work/username/projects/test|ls|bottom|/home/work/username/projects|ls|
-    simple|push|/home/work/username/projects/project|git status|lest|/home/work/username/projects/project|git pull|
+    simple|push|/home/work/username/projects/project|git status|left|/home/work/username/projects/project|git pull|
     horizontal|project|/home/work/username/projects/project|
     " > my_sessions
 
