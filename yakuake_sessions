@@ -200,8 +200,9 @@ function load_tabs() {
   function _yakuake_set_title() {
     if [[ -n "${_title}" ]] ; then
     {
-      (( DEBUG )) && pront " +-- Change title Terminal:${_counter} Title:${_alt_counter}.${_title}"
-      (( DEBUG )) || qdbus org.kde.yakuake /yakuake/tabs setTabTitle ${SESSION_ID_} "${_alt_counter}.${_title}"
+			local _title_new="$(sed 's/\ /\\ /g' <<< "${_alt_counter}.${_title}")"
+      (( DEBUG )) && pront " +-- Change title Terminal:${_counter} Title:${_title_new}"
+      (( DEBUG )) || qdbus org.kde.yakuake /yakuake/tabs setTabTitle ${SESSION_ID_} "${_title_new}"
     }
     fi
   } # end _yakuake_set_title
