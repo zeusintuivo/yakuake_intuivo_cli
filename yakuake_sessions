@@ -79,12 +79,12 @@ function load_tabs() {
   DEBUG=0
   local -i LIMIT_COUNTER
   LIMIT_COUNTER=0
-  if [[ "${1}" == '--debug' ]] ; then
+  if [[ "${2}" == '--debug' ]] ; then
   {
     clear
     DEBUG=1
     set -xu
-    if [ -n ${2-} ] && [ ${2-} -gt 0 ] ; then
+    if [ -n ${3-} ] && [ ${3-} -gt 0 ] ; then
     {
       LIMIT_COUNTER=${2}
     }
@@ -136,6 +136,7 @@ function load_tabs() {
   }
   done <<< "${_current_sessions}"
   local _session_start_type _one _title _path _path2 _run _run2 _split SESSION_ID_ TERMINAL_ID_
+	local _split3  _path3  _run3
   local _yakuake_path_and_run _yakuake_set_title
   function _yakuake_split() {
     if [[ -n "${_split-}" ]] ; then
@@ -301,6 +302,9 @@ function load_tabs() {
     _split=""
     _path2=""
     _run2=""
+    _split3=""
+    _path3=""
+    _run3=""
     [ -z "${_one}" ] && continue
     _session_start_type="$(cut -d'|' -f1 <<< ${_one})"
     _title="$(cut -d'|' -f2 <<< ${_one})"
@@ -309,7 +313,10 @@ function load_tabs() {
     _split="$(cut -d'|' -f5 <<< ${_one})"
     _path2="$(cut -d'|' -f6 <<< ${_one})"
     _run2="$(cut -d'|' -f7 <<< ${_one})"
-    pront "Terminal ${_alt_counter} "
+    _split3="$(cut -d'|' -f8 <<< ${_one})"
+    _path3="$(cut -d'|' -f9 <<< ${_one})"
+    _run3="$(cut -d'|' -f10 <<< ${_one})"
+     pront "Terminal ${_alt_counter} "
     case "${_session_start_type}" in
       simple*) _yakuake_add_tab ;;
       flat*) _yakuake_add_tab ;;
