@@ -1,0 +1,196 @@
+#!/usr/bin/env bash
+
+function load_colors() {
+  [[ -z "${CYAN:-}" ]] && CYAN="\\033[38;5;123m"
+  [[ -z "${PURPLE_BLUE:-}" ]] && PURPLE_BLUE="\\033[38;5;93m"
+  [[ -z "${YELLOW226:-}" ]] && YELLOW226="\\033[38;5;226m"
+  [[ -z "${GRAY241:-}" ]] && GRAY241="\\033[38;5;241m"
+  [[ -z "${GRAY242:-}" ]] && GRAY242="\\033[38;5;242m"
+  [[ -z "${GRAY243:-}" ]] && GRAY243="\\033[38;5;243m"
+  [[ -z "${YELLOW214:-}" ]] && YELLOW214="\\033[38;5;214m"
+  [[ -z "${RESET:-}" ]] && RESET="\\033[0m"
+  [[ -z "${RED:-}" ]] && RED="\\033[38;5;1m"
+  [[ -z "${BRIGHT_BLUE87:-}" ]] && BRIGHT_BLUE87="\\033[38;5;87m"
+  [[ -z "${GRAYEDOUT::-}" ]] && GRAYEDOUT="\033[01;30m" # W: GRAYEDOUT appears unused. Verify use (or export if used exte…
+  [[ -z "${RED:-}" ]] && RED="\033[01;31m"
+  [[ -z "${GREEN:-}" ]] && GREEN="\033[01;32m" # W: GREEN appears unused. Verify use (or export if used externally).
+  [[ -z "${YELLOW:-}" ]] && YELLOW="\033[01;33m" # W: YELLOW appears unused. Verify use (or export if used externally…
+  [[ -z "${DARKBLUE:-}" ]] && DARKBLUE="\033[01;34m" # W: DARKBLUE appears unused. Verify use (or export if used extern…
+  [[ -z "${DARKGREEN:-}" ]] && DARKGREEN="\033[38;5;22m" # W: DARKGREEN appears unused. Verify use (or export if used ex…
+  [[ -z "${PURPLE:-}" ]] && PURPLE="\033[01;35m" # W: PURPLE appears unused. Verify use (or export if used externally…
+  [[ -z "${CYAN:-}" ]] && CYAN="\033[01;36m"
+  [[ -z "${WHITEBOLD:-}" ]] && WHITEBOLD="\033[01;37m" # W: WHITEBOLD appears unused. Verify use (or export if used exte…
+  [[ -z "${LIGHTGREEN:-}" ]] && LIGHTGREEN="\033[38;5;83m" # W: LIGHTGREEN appears unused. Verify use (or export if used …
+  [[ -z "${LIGHTPINK:-}" ]] && LIGHTPINK="\033[1;204m" # W: LIGHTPINK appears unused. Verify use (or export if used exte…
+  [[ -z "${LIGHTYELLOW:-}" ]] && LIGHTYELLOW="\033[38;5;227m" # W: LIGHTYELLOW appears unused. Verify use (or export if us…
+  [[ -z "${GREEN_OVER_DARKBLUE:-}" ]] && GREEN_OVER_DARKBLUE="\033[38;5;76m\033[48;5;17m" # W: GREEN_OVER_DARKBLUE appears unused.…
+  [[ -z "${YELLOW_OVER_DARKBLUE:-}" ]] && YELLOW_OVER_DARKBLUE="\033[38;5;220m\033[48;5;20m" # W: YELLOW_OVER_DARKBLUE appears unus…
+  [[ -z "${DARKBLUE_OVER_DARKBLUE:-}" ]] && DARKBLUE_OVER_DARKBLUE="\033[01;34m\033[48;5;20m" # W: DARKBLUE_OVER_DARKBLUE appears unu…
+  [[ -z "${RESET:-}" ]] && RESET="\033[0m"
+} # end load_colors
+
+load_colors
+
+function _trap_on_error(){
+  local -ir __trapped_error_exit_num="${2:-0}"
+  echo -e "\\n \033[01;7m*** 2 ERROR TRAP $THISSCRIPTNAME \\n${BASH_SOURCE}:${BASH_LINENO[-0]} ${FUNCNAME[1]}() \\n$0:${BASH_LINENO[1]} ${FUNCNAME[2]}()  \\n$0:${BASH_LINENO[2]} ${FUNCNAME[3]}() \\n ERR ...\033[0m  \n \n "
+  echo ". ${1}"
+  echo ". exit  ${__trapped_error_exit_num}  "
+  echo ". caller $(caller) "
+  echo ". ${BASH_COMMAND}"
+  local -r __caller=$(caller)
+  local -ir __caller_line=$(echo "${__caller}" | cut -d' ' -f1)
+  local -r __caller_script_name=$(echo "${__caller}" | cut -d' ' -f2)
+  local output="$(awk 'NR>L-10 && NR<L+10 { printf "%-10d%10s%s\n",NR,(NR==L?"☠ » » » > ":""),$0 }' L="${__caller_line}" "${__caller_script_name}")"
+  echo "${output}" | pygmentize -g
+
+  # $(eval ${BASH_COMMAND}  2>&1; )
+  # echo -e " ☠ ${LIGHTPINK} Offending message:  ${__bash_error} ${RESET}"  >&2
+  exit ${__trapped_error_exit_num}
+}
+trap  '_trap_on_error $0 "${?}" LINENO BASH_LINENO FUNCNAME BASH_COMMAND $FUNCNAME $BASH_LINENO $LINENO   $BASH_COMMAND'  ERR
+
+function main() {
+  local params="${*-}"
+
+  /usr/bin/chmod -Rf a+rX,u+w,g-w,o-w .
+  jobs -p
+  umask 022
+  [[ -z "${QTDIR:-}" ]] && QTDIR=/usr/lib64/qt5
+  export QTDIR
+  [[ ! -e "${QTDIR:-}" ]] && >&2 "${RED} 𝞦 ERROR - \\\\n ${YELLOW220} file not found ${QTDIR:-}   ${RESET}" && exit 1
+
+  local files_check_path="
+/usr/lib64/qt5/bin
+/usr/local/bin
+/usr/bin
+/usr/local/games
+/usr/games
+/usr/local/sbin
+/usr/sbin
+/usr/lib64/qt5/bin
+${HOME}/.local/bin
+${HOME}/bin
+"
+  local newpath="${PATH:-}"
+  local one
+  while read -r one  ; do
+  {
+    [[ -z "${one}" ]] && continue
+    [[ ! -e "${one}" ]] && >&2 "${RED} 𝞦 ERROR - \\\\n ${YELLOW220} file not found ${one:-}   ${RESET}"
+    ls "${one}"
+    newpath="${one}:${newpath}"
+  }
+  done <<< "${files_check_path}"
+
+  PATH="${newpath}"
+  export PATH
+
+  CFLAGS='-O2 -g -pipe -Wformat -Werror=format-security -Wp,\
+   -D_FORTIFY_SOURCE=2 -fstack-protector --param=ssp-buffer-size=4 -fasynchronous-unwind-tables'
+  export CFLAGS
+  CXXFLAGS='-O2 -g -pipe -Wformat -Werror=format-security -Wp,\
+   -D_FORTIFY_SOURCE=2 -fstack-protector --param=ssp-buffer-size=4 -fasynchronous-unwind-tables'
+  export CXXFLAGS
+  FFLAGS='-O2 -g -pipe -Wformat -Werror=format-security -Wp,\
+   -D_FORTIFY_SOURCE=2 -fstack-protector --param=ssp-buffer-size=4 -fasynchronous-unwind-tables '
+  export FFLAGS
+  FCFLAGS='-O2 -g -pipe -Wformat -Werror=format-security -Wp,\
+   -D_FORTIFY_SOURCE=2 -fstack-protector --param=ssp-buffer-size=4 -fasynchronous-unwind-tables '
+  export FCFLAGS
+  LDFLAGS=' -Wl,--as-needed -Wl,--no-undefined -Wl,-z,relro -Wl,-O1 -Wl,--build-id -Wl,--enable-new-dtags'
+  export LDFLAGS
+
+  local files_check_path="
+/usr/bin/cmake
+/usr
+/usr/lib64
+/usr/libexec
+/run
+/etc
+/usr/include
+/usr/lib64
+/etc
+/usr/share
+/usr/libexec/kf5
+/usr/share/metainfo
+/usr/lib64/qt5/plugins
+/usr/lib64/qt5/qml
+/usr/share/config.kcfg
+/usr/lib64/qt5/plugins
+/usr/lib64/qt5/plugins
+/usr/lib64/qt5/qml
+/usr/lib64/qt5/imports
+/usr/lib64/qt5/mkspecs/modules
+/usr/libexec
+/usr/libexec/kf5
+/usr/share/dbus-1/interfaces
+"
+  while read -r one  ; do
+  {
+    [[ -z "${one}" ]] && continue
+    [[ ! -e "${one}" ]] && >&2 "${RED} 𝞦 ERROR - \\\\n ${YELLOW220} file not found ${one:-}   ${RESET}"
+    ls "${one}"
+  }
+  done <<< "${files_check_path}"
+
+
+  /usr/bin/cmake -Wno-dev -S . -B build \
+   -DCMAKE_INSTALL_PREFIX:PATH=/usr \
+   -DCMAKE_INSTALL_LIBDIR:PATH=/usr/lib64 \
+   -DCMAKE_INSTALL_LIBEXECDIR:PATH=/usr/libexec \
+   -DCMAKE_INSTALL_RUNSTATEDIR:PATH=/run \
+   -DCMAKE_INSTALL_SYSCONFDIR:PATH=/etc \
+   -DINCLUDE_INSTALL_DIR:PATH=/usr/include \
+   -DLIB_INSTALL_DIR:PATH=/usr/lib64 \
+   -DSYSCONF_INSTALL_DIR:PATH=/etc \
+   -DSHARE_INSTALL_PREFIX:PATH=/usr/share \
+   -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+   -DCMAKE_CXX_FLAGS_RELWITHDEBINFO:STRING=\
+   -DCMAKE_C_FLAGS_RELWITHDEBINFO:STRING=\
+   -DCMAKE_CXX_FLAGS_RELEASE:STRING=\
+   -DCMAKE_C_FLAGS_RELEASE:STRING=\
+   -DLIB_SUFFIX=64 \
+   -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON \
+   -DCMAKE_MODULE_LINKER_FLAGS='-Wl,--as-needed  -Wl,-z,relro -Wl,-O1 -Wl,--build-id -Wl,--enable-new-dtags' \
+   -DBUILD_SHARED_LIBS:BOOL=ON \
+   -DBUILD_STATIC_LIBS:BOOL=OFF \
+   -DBUILD_SHARED_LIBS:BOOL=ON \
+   -DBUILD_TESTING:BOOL=FALSE \
+   -DCMAKE_INSTALL_PREFIX:PATH=/usr \
+   -DCMAKE_INSTALL_FULL_BINDIR=/usr/bin \
+   -DCMAKE_INSTALL_FULL_LIBEXECDIR=/usr/libexec \
+   -DCMAKE_INSTALL_FULL_LIBEXECDIR_KF5=/usr/libexec/kf5 \
+   -DCMAKE_USE_RELATIVE_PATHS:BOOL=ON \
+   -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON \
+   -DBIN_INSTALL_DIR:PATH=/usr/bin \
+   -DINCLUDE_INSTALL_DIR:PATH=/usr/include \
+   -DLIB_INSTALL_DIR:PATH=lib64 \
+   -DKCFG_INSTALL_DIR:PATH=/usr/share/config.kcfg \
+   -DPLUGIN_INSTALL_DIR:PATH=/usr/lib64/qt5/plugins \
+   -DQT_PLUGIN_INSTALL_DIR:PATH=/usr/lib64/qt5/plugins \
+   -DQML_INSTALL_DIR:PATH=/usr/lib64/qt5/qml \
+   -DIMPORTS_INSTALL_DIR:PATH=/usr/lib64/qt5/imports \
+   -DECM_MKSPECS_INSTALL_DIR:PATH=/usr/lib64/qt5/mkspecs/modules \
+   -DSYSCONF_INSTALL_DIR:PATH=/etc \
+   -DLIBEXEC_INSTALL_DIR:PATH=/usr/libexec \
+   -DKF5_LIBEXEC_INSTALL_DIR=/usr/libexec/kf5 \
+   -DKF5_INCLUDE_INSTALL_DIR=/usr/include/KF5 \
+   -DDBUS_INTERFACES_INSTALL_DIR=/usr/share/dbus-1/interfaces \
+   -DKDE_INSTALL_USE_QT_SYS_PATHS:BOOL=ON \
+   -DKDE_INSTALL_BINDIR:PATH=/usr/bin \
+   -DKDE_INSTALL_INCLUDEDIR:PATH=/usr/include \
+   -DKDE_INSTALL_KCFGDIR:PATH=/usr/share/config.kcfg \
+   -DKDE_INSTALL_LIBDIR:PATH=/usr/lib64 \
+   -DKDE_INSTALL_LIBEXECDIR:PATH=/usr/libexec \
+   -DKDE_INSTALL_METAINFODIR:PATH=/usr/share/metainfo \
+   -DKDE_INSTALL_PLUGINDIR:PATH=/usr/lib64/qt5/plugins \
+   -DKDE_INSTALL_QMLDIR:PATH=/usr/lib64/qt5/qml \
+   -DKDE_INSTALL_QTPLUGINDIR:PATH=/usr/lib64/qt5/plugins \
+   -DKDE_INSTALL_QTQUICKIMPORTSDIR:PATH=/usr/lib64/qt5/imports \
+   -DKDE_INSTALL_SYSCONFDIR:PATH=/etc
+
+} # end main
+
+
+main "${*-}"
