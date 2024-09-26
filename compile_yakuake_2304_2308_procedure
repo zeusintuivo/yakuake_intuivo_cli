@@ -31,6 +31,8 @@ function load_colors() {
 
 load_colors
 
+
+
 function _trap_on_error(){
   local -ir __trapped_error_exit_num="${2:-0}"
   echo -e "\\n \033[01;7m*** 2 ERROR TRAP $THISSCRIPTNAME \\n${BASH_SOURCE}:${BASH_LINENO[-0]} ${FUNCNAME[1]}() \\n$0:${BASH_LINENO[1]} ${FUNCNAME[2]}()  \\n$0:${BASH_LINENO[2]} ${FUNCNAME[3]}() \\n ERR ...\033[0m  \n \n "
@@ -194,3 +196,32 @@ ${HOME}/bin
 
 
 main "${*-}"
+
+echo "------"
+echo "------"
+echo "------"
+echo "------"
+echo "------"
+echo "NOW RUNNING MAKE: make"
+echo "------"
+echo "------"
+echo "------     make     "
+echo "------"
+echo "------"
+make
+
+s
+echo "------"
+echo "------"
+echo "------"
+echo "------"
+echo "------"
+echo "      now installing : sudo make install"
+echo "------"
+echo "------"
+echo "------     sudo make install     "
+echo "------"
+echo "------"
+make
+
+udo make install
