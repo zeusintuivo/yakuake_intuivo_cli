@@ -1,9 +1,13 @@
 #!/usr/bin/env bash
 
+set -u +E -o pipefail -o functrace
+# set -u
+
 function load_colors() {
   [[ -z "${CYAN:-}" ]] && CYAN="\\033[38;5;123m"
   [[ -z "${PURPLE_BLUE:-}" ]] && PURPLE_BLUE="\\033[38;5;93m"
   [[ -z "${YELLOW226:-}" ]] && YELLOW226="\\033[38;5;226m"
+  [[ -z "${YELLOW220:-}" ]] && YELLOW220="\\033[38;5;226m"
   [[ -z "${GRAY241:-}" ]] && GRAY241="\\033[38;5;241m"
   [[ -z "${GRAY242:-}" ]] && GRAY242="\\033[38;5;242m"
   [[ -z "${GRAY243:-}" ]] && GRAY243="\\033[38;5;243m"
@@ -11,7 +15,7 @@ function load_colors() {
   [[ -z "${RESET:-}" ]] && RESET="\\033[0m"
   [[ -z "${RED:-}" ]] && RED="\\033[38;5;1m"
   [[ -z "${BRIGHT_BLUE87:-}" ]] && BRIGHT_BLUE87="\\033[38;5;87m"
-  [[ -z "${GRAYEDOUT::-}" ]] && GRAYEDOUT="\\033[01;30m"
+  [[ -z "${GRAYEDOUT:-}" ]] && GRAYEDOUT="\\033[01;30m"
   [[ -z "${RED:-}" ]] && RED="\\033[01;31m"
   [[ -z "${GREEN:-}" ]] && GREEN="\\033[01;32m"
   [[ -z "${YELLOW:-}" ]] && YELLOW="\\033[01;33m"
@@ -35,7 +39,7 @@ load_colors
 
 function _trap_on_error(){
   local -ir __trapped_error_exit_num="${2:-0}"
-  echo -e "\\n \033[01;7m*** 2 ERROR TRAP $THISSCRIPTNAME \\n${BASH_SOURCE}:${BASH_LINENO[-0]} ${FUNCNAME[1]}() \\n$0:${BASH_LINENO[1]} ${FUNCNAME[2]}()  \\n$0:${BASH_LINENO[2]} ${FUNCNAME[3]}() \\n ERR ...\033[0m  \n \n "
+  echo -e "\\n \033[01;7m*** 2 ERROR TRAP $THISSCRIPTNAME \\n${BASH_SOURCE[0]}:${BASH_LINENO[-0]} ${FUNCNAME[1]}() \\n$0:${BASH_LINENO[1]} ${FUNCNAME[2]}()  \\n$0:${BASH_LINENO[2]} ${FUNCNAME[3]}() \\n ERR ...\033[0m  \n \n "
   echo ". ${1}"
   echo ". exit  ${__trapped_error_exit_num}  "
   echo ". caller $(caller) "
@@ -43,7 +47,8 @@ function _trap_on_error(){
   local -r __caller=$(caller)
   local -ir __caller_line=$(echo "${__caller}" | cut -d' ' -f1)
   local -r __caller_script_name=$(echo "${__caller}" | cut -d' ' -f2)
-  local output="$(awk 'NR>L-10 && NR<L+10 { printf "%-10d%10s%s\n",NR,(NR==L?"☠ » » » > ":""),$0 }' L="${__caller_line}" "${__caller_script_name}")"
+  local output=""
+	output="$(awk 'NR>L-10 && NR<L+10 { printf "%-10d%10s%s\n",NR,(NR==L?"☠ » » » > ":""),$0 }' L="${__caller_line}" "${__caller_script_name}")"
   echo "${output}" | pygmentize -g
 
   # $(eval ${BASH_COMMAND}  2>&1; )
@@ -224,4 +229,9 @@ echo "------"
 echo "------"
 make
 
-udo make install
+sudo make install
+
+
+
+
+#
