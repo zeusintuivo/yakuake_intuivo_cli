@@ -39,8 +39,8 @@ load_colors
 
 function _trap_on_error(){
   local -ir __trapped_error_exit_num="${2:-0}"
-  echo -e "\\n \033[01;7m*** 2 ERROR TRAP $THISSCRIPTNAME \\n${BASH_SOURCE[0]}:${BASH_LINENO[-0]} ${FUNCNAME[1]}() \\n$0:${BASH_LINENO[1]} ${FUNCNAME[2]}()  \\n$0:${BASH_LINENO[2]} ${FUNCNAME[3]}() \\n ERR ...\033[0m  \n \n "
-  echo ". ${1}"
+  #echo -e "\\n \033[01;7m*** 2 ERROR TRAP $THISSCRIPTNAME \\n${BASH_SOURCE[0]}:${BASH_LINENO[-0]} ${FUNCNAME[1]-}() \\n$0:${BASH_LINENO[1]-} ${FUNCNAME[2]-}()  \\n$0:${BASH_LINENO[2]-} ${FUNCNAME[3]-}() \\n ERR ...\033[0m  \n \n "
+  echo "$0:$LINENO. ${1-}"
   echo ". exit  ${__trapped_error_exit_num}  "
   echo ". caller $(caller) "
   echo ". ${BASH_COMMAND}"
@@ -55,7 +55,7 @@ function _trap_on_error(){
   # echo -e " ☠ ${LIGHTPINK} Offending message:  ${__bash_error} ${RESET}"  >&2
   exit ${__trapped_error_exit_num}
 }
-trap  '_trap_on_error $0 "${?}" LINENO BASH_LINENO FUNCNAME BASH_COMMAND $FUNCNAME $BASH_LINENO $LINENO   $BASH_COMMAND'  ERR
+trap  '_trap_on_error'  ERR
 
 function main() {
   local params="${*-}"
